@@ -1,2 +1,2 @@
 # CronBoolean
-cronExpression was matched return boolean
+cronExpression return boolean
