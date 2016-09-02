@@ -1,6 +1,6 @@
 name := "CronBoolean"
 
-version := "1.0-alpha-3"
+version := "1.0-alpha-4"
 
 scalaVersion := "2.11.8"
 

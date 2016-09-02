@@ -15,7 +15,7 @@ object BooleanCron {
 
   private val intervalRegex = """^(\d+)/(\d+)$""".r
 
-  private def optionCronValue(e: String): Option[String] = if (e == "*") None else Some(e)
+  private def cronUnitOptionValue(e: String): Option[String] = if (e == "*") None else Some(e)
 
   private def getCurrTimes: CurrTime = {
     val date = LocalDate.now()
@@ -26,7 +26,8 @@ object BooleanCron {
     val cDay = date.getDayOfMonth
     val cMon = date.getMonthValue
     val cWeek = date.getDayOfWeek.getValue
-    CurrTime(cSec, cMin, cHour, cDay, cMon, cWeek, date.lengthOfMonth())
+    val cDays = date.lengthOfMonth()
+    CurrTime(cSec, cMin, cHour, cDay, cMon, cWeek, cDays)
   }
 
   private def parseCron(cron: String): Array[String] = {
@@ -36,102 +37,112 @@ object BooleanCron {
 
   private def generateCronExpression(timer: String): CronExpression = {
     val times = parseCron(timer)
-    val secOpt = optionCronValue(times(0))
-    val minOpt = optionCronValue(times(1))
-    val hourOpt = optionCronValue(times(2))
-    val dayOpt = optionCronValue(times(3))
-    val monOpt = optionCronValue(times(4))
-    val weekOpt = optionCronValue(times(5))
+    val secOpt = cronUnitOptionValue(times(0))
+    val minOpt = cronUnitOptionValue(times(1))
+    val hourOpt = cronUnitOptionValue(times(2))
+    val dayOpt = cronUnitOptionValue(times(3))
+    val monOpt = cronUnitOptionValue(times(4))
+    val weekOpt = cronUnitOptionValue(times(5))
     CronExpression(secOpt, minOpt, hourOpt, dayOpt, monOpt, weekOpt)
   }
 
-  def cronMatch(cron: String): Boolean = {
-    val CurrTime(cSec, cMin, cHour, cDay, cMon, cWeek, cDays) = getCurrTimes
+  def cronMatch(cronExpressionString: String): Boolean = {
+    val cue = CronUnitEnume
 
-    generateCronExpression(cron) match {
+    generateCronExpression(cronExpressionString) match {
       case CronExpression(Some(sec), Some(min), Some(hour), Some(day), Some(mon), Some(week)) =>
-        allTrueMatch(secondMatch(sec)(cSec), minuteMatch(min)(cMin), hourMatch(hour)(cHour), dayMatch(day, cDays)(cDay), monthMatch(mon)(cMon), weekMatch(week)(cWeek))
-      case CronExpression(Some(sec), Some(min), Some(hour), Some(day), None, Some(week)) =>
-        allTrueMatch(secondMatch(sec)(cSec), minuteMatch(min)(cMin), hourMatch(hour)(cHour), dayMatch(day, cDays)(cDay), weekMatch(week)(cWeek))
-      case CronExpression(Some(sec), Some(min), Some(hour), None, None, Some(week)) =>
-        allTrueMatch(secondMatch(sec)(cSec), minuteMatch(min)(cMin), hourMatch(hour)(cHour), weekMatch(week)(cWeek))
-      case CronExpression(Some(sec), Some(min), None, None, None, Some(week)) =>
-        allTrueMatch(secondMatch(sec)(cSec), minuteMatch(min)(cMin), weekMatch(week)(cWeek))
-      case CronExpression(Some(sec), None, None, None, None, Some(week)) =>
-        allTrueMatch(secondMatch(sec)(cSec), weekMatch(week)(cWeek))
-      case CronExpression(Some(sec), Some(min), Some(hour), Some(day), Some(mon), None) =>
-        allTrueMatch(secondMatch(sec)(cSec), minuteMatch(min)(cMin), hourMatch(hour)(cHour), dayMatch(day, cDays)(cDay), monthMatch(mon)(cMon))
-      case CronExpression(Some(sec), Some(min), Some(hour), Some(day), None, None) =>
-        allTrueMatch(secondMatch(sec)(cSec), minuteMatch(min)(cMin), hourMatch(hour)(cHour), dayMatch(day, cDays)(cDay))
-      case CronExpression(Some(sec), Some(min), Some(hour), None, None, None) =>
-        allTrueMatch(secondMatch(sec)(cSec), minuteMatch(min)(cMin), hourMatch(hour)(cHour))
-      case CronExpression(Some(sec), Some(min), None, None, None, None) =>
-        allTrueMatch(secondMatch(sec)(cSec), minuteMatch(min)(cMin))
-      case CronExpression(Some(sec), None, None, None, None, None) =>
-        allTrueMatch(secondMatch(sec)(cSec))
-      case _ =>
-        false
+        cronExpressionUnitsMatch((cue.SEC, sec), (cue.MIN, min), (cue.HOUR, hour), (cue.DAY, day), (cue.MON, mon), (cue.WEEK, week))
+      case CronExpression(Some(sec), Some(min), Some(hour), Some(day), _, Some(week)) =>
+        cronExpressionUnitsMatch((cue.SEC, sec), (cue.MIN, min), (cue.HOUR, hour), (cue.DAY, day), (cue.WEEK, week))
+      case CronExpression(Some(sec), Some(min), Some(hour), _, _, Some(week)) =>
+        cronExpressionUnitsMatch((cue.SEC, sec), (cue.MIN, min), (cue.HOUR, hour), (cue.WEEK, week))
+      case CronExpression(Some(sec), Some(min), _, _, _, Some(week)) =>
+        cronExpressionUnitsMatch((cue.SEC, sec), (cue.MIN, min), (cue.WEEK, week))
+      case CronExpression(Some(sec), _, _, _, _, Some(week)) =>
+        cronExpressionUnitsMatch((cue.SEC, sec), (cue.WEEK, week))
+      case CronExpression(Some(sec), Some(min), Some(hour), Some(day), Some(mon), _) =>
+        cronExpressionUnitsMatch((cue.SEC, sec), (cue.MIN, min), (cue.HOUR, hour), (cue.DAY, day), (cue.MON, mon))
+      case CronExpression(Some(sec), Some(min), Some(hour), Some(day), _, _) =>
+        cronExpressionUnitsMatch((cue.SEC, sec), (cue.MIN, min), (cue.HOUR, hour), (cue.DAY, day))
+      case CronExpression(Some(sec), Some(min), Some(hour), _, _, _) =>
+        cronExpressionUnitsMatch((cue.SEC, sec), (cue.MIN, min), (cue.HOUR, hour))
+      case CronExpression(Some(sec), Some(min), _, _, _, _) =>
+        cronExpressionUnitsMatch((cue.SEC, sec), (cue.MIN, min))
+      case CronExpression(Some(sec), _, _, _, _, _) =>
+        cronExpressionUnitsMatch((cue.SEC, sec))
+      case _ => false
     }
   }
 
-  private def unitMatch(unitRange: List[Option[List[Int]]], curr: Int): Boolean = {
+  private def cronExpressionUnitsMatch(ces: (CronUnitEnume.Value, String)*) = {
+    val unitMatchBycTime = unitMatch(getCurrTimes) _
+    ces.map(unitMatchBycTime).reduce(_ && _)
+  }
+
+  private def unitMatchCurrTime(unitRange: List[Option[List[Int]]], curr: Int): Boolean = {
     if (unitRange.find(_.isEmpty).nonEmpty) false
     else unitRange.map(_.get).flatMap(u => u).find(_ == curr).nonEmpty
   }
 
-  private def secondMatch(unit: String)(implicit curr: Int): Boolean = {
-    val c: List[Option[List[Int]]] = unitUnfold(unit, 0, 60)
-    unitMatch(c, curr)
+  private def unitMatch(ctime: CurrTime)(cronUnit: (CronUnitEnume.Value, String)) = {
+    val CurrTime(cSec, cMin, cHour, cDay, cMon, cWeek, cDays) = ctime
+    cronUnit match {
+      case (CronUnitEnume.SEC, unit) => secondMatch(unit)(cSec)
+      case (CronUnitEnume.MIN, unit) => minuteMatch(unit)(cMin)
+      case (CronUnitEnume.HOUR, unit) => hourMatch(unit)(cHour)
+      case (CronUnitEnume.DAY, unit) => dayMatch(unit, cDays)(cDay)
+      case (CronUnitEnume.MON, unit) => monthMatch(unit)(cMon)
+      case (CronUnitEnume.WEEK, unit) => weekMatch(unit)(cWeek)
+    }
   }
 
-  private def unitUnfold(unit: String, minLimit: Int, maxLimit: Int): List[Option[List[Int]]] = {
+  private def unitUnfoldToValues(unit: String, minLimit: Int, maxLimit: Int): List[Option[List[Int]]] = {
     unit.split(",").map(_ match {
       case intervalRegex(s, i) => intervalToValues(s.toInt, i.toInt, maxLimit)
-      case rangeRegex(l, h) => rangeToValues(l.toInt, h.toInt, minLimit, maxLimit)
+      case rangeRegex(l, r) => rangeToValues(l.toInt, r.toInt, minLimit, maxLimit)
       case u: String => Some(List(u.toInt))
     }).toList
   }
 
+  private def secondMatch(unit: String)(implicit curr: Int): Boolean = {
+    unitMatchCurrTime(unitUnfoldToValues(unit, 0, 59), curr)
+  }
+
   private def minuteMatch(unit: String)(implicit curr: Int): Boolean = {
-    val c: List[Option[List[Int]]] = unitUnfold(unit, 0, 60)
-    unitMatch(c, curr)
+    unitMatchCurrTime(unitUnfoldToValues(unit, 0, 59), curr)
   }
 
   private def hourMatch(unit: String)(implicit curr: Int): Boolean = {
-    val c: List[Option[List[Int]]] = unitUnfold(unit, 0, 24)
-    unitMatch(c, curr)
+    unitMatchCurrTime(unitUnfoldToValues(unit, 0, 23), curr)
   }
 
-  private def dayMatch(unit: String, monthLength: Int)(implicit curr: Int): Boolean = {
-    val c: List[Option[List[Int]]] = unitUnfold(unit, 1, monthLength)
-    unitMatch(c, curr)
+  private def dayMatch(unit: String, daysOfMonth: Int)(implicit curr: Int): Boolean = {
+    unitMatchCurrTime(unitUnfoldToValues(unit, 1, daysOfMonth), curr)
   }
 
   private def monthMatch(unit: String)(implicit curr: Int): Boolean = {
-    val c: List[Option[List[Int]]] = unitUnfold(unit, 1, 12)
-    unitMatch(c, curr)
+    unitMatchCurrTime(unitUnfoldToValues(unit, 1, 12), curr)
   }
 
   private def weekMatch(unit: String)(implicit curr: Int): Boolean = {
-    val c: List[Option[List[Int]]] = unitUnfold(unit, 1, 7)
-    unitMatch(c, curr)
+    unitMatchCurrTime(unitUnfoldToValues(unit, 1, 7), curr)
   }
 
   private def intervalToValues(start: Int, interval: Int, maxLimit: Int): Option[List[Int]] = {
     if (start < maxLimit && interval < maxLimit)
-      Some((start.toInt to maxLimit by interval.toInt).toList)
+      Some((start to maxLimit by interval).toList)
     else None
   }
 
-  private def rangeToValues(low: Int, high: Int, minLimit: Int, maxLimit: Int): Option[List[Int]] = {
-    if (low < maxLimit && high.toInt < maxLimit && low.toInt < high.toInt)
-      Some((low to high).toList)
-    else if (low.toInt < maxLimit && high.toInt < maxLimit)
-      Some((low.toInt until maxLimit).toList ::: (minLimit to high.toInt).toList)
+  private def rangeToValues(left: Int, right: Int, minLimit: Int, maxLimit: Int): Option[List[Int]] = {
+    if (left < maxLimit && right < maxLimit && left < right)
+      Some((left to right).toList)
+    else if (left < maxLimit && right < maxLimit)
+      Some(((left until maxLimit) ++ (minLimit to right)).toList)
     else None
   }
 
-  private def allTrueMatch(t: Boolean*): Boolean = {
-    t.reduce(_ && _)
+  object CronUnitEnume extends Enumeration {
+    val SEC, MIN, HOUR, DAY, MON, WEEK = Value
   }
 }
