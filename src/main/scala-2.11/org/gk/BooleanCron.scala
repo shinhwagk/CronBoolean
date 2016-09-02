@@ -115,9 +115,9 @@ object BooleanCron {
   }
 
   private def rangeToValues(left: Int, right: Int, minLimit: Int, maxLimit: Int): Option[List[Int]] = {
-    if (left < maxLimit && right < maxLimit && left < right)
+    if (left <= maxLimit && right <= maxLimit && left <= right)
       Some((left to right).toList)
-    else if (left < maxLimit && right < maxLimit)
+    else if (left <= maxLimit && right <= maxLimit)
       Some(((left until maxLimit) ++ (minLimit to right)).toList)
     else None
   }

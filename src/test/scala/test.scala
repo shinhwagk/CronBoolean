@@ -6,7 +6,7 @@ import org.gk.BooleanCron
 object test {
   def main(args: Array[String]): Unit = {
     while (true) {
-      println(BooleanCron.cronMatch("0-11,20-50 * * * * *"))
+      println(BooleanCron.cronMatch("1-59 * * * * 5"))
       Thread.sleep(1000)
     }
   }
