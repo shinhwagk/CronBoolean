@@ -84,15 +84,16 @@ object BooleanCron {
     else unitRange.map(_.get).flatMap(u => u).find(_ == curr).nonEmpty
   }
 
-  private def unitMatch(ctime: CurrTime)(cronUnit: (CronUnitEnume.Value, String)) = {
-    val CurrTime(cSec, cMin, cHour, cDay, cMon, cWeek, cDays) = ctime
+  private def unitMatch(cTime: CurrTime)(cronUnit: (CronUnitEnume.Value, String)): Boolean = {
+    val CurrTime(cSec, cMin, cHour, cDay, cMon, cWeek, cDays) = cTime
+
     cronUnit match {
-      case (CronUnitEnume.SEC, unit) => secondMatch(unit)(cSec)
-      case (CronUnitEnume.MIN, unit) => minuteMatch(unit)(cMin)
-      case (CronUnitEnume.HOUR, unit) => hourMatch(unit)(cHour)
-      case (CronUnitEnume.DAY, unit) => dayMatch(unit, cDays)(cDay)
-      case (CronUnitEnume.MON, unit) => monthMatch(unit)(cMon)
-      case (CronUnitEnume.WEEK, unit) => weekMatch(unit)(cWeek)
+      case (CronUnitEnume.SEC, unit) => unitMatchCurrTime(unitUnfoldToValues(unit, 0, 59), cSec)
+      case (CronUnitEnume.MIN, unit) => unitMatchCurrTime(unitUnfoldToValues(unit, 0, 59), cMin)
+      case (CronUnitEnume.HOUR, unit) => unitMatchCurrTime(unitUnfoldToValues(unit, 0, 23), cHour)
+      case (CronUnitEnume.DAY, unit) => unitMatchCurrTime(unitUnfoldToValues(unit, 1, cDays), cDay)
+      case (CronUnitEnume.MON, unit) => unitMatchCurrTime(unitUnfoldToValues(unit, 1, 12), cMon)
+      case (CronUnitEnume.WEEK, unit) => unitMatchCurrTime(unitUnfoldToValues(unit, 1, 7), cWeek)
     }
   }
 
@@ -105,30 +106,6 @@ object BooleanCron {
       case u: String if u.toInt <= maxLimit && u.toInt >= minLimit =>
         Some(List(u.toInt))
     }).toList
-  }
-
-  private def secondMatch(unit: String)(implicit curr: Int): Boolean = {
-    unitMatchCurrTime(unitUnfoldToValues(unit, 0, 59), curr)
-  }
-
-  private def minuteMatch(unit: String)(implicit curr: Int): Boolean = {
-    unitMatchCurrTime(unitUnfoldToValues(unit, 0, 59), curr)
-  }
-
-  private def hourMatch(unit: String)(implicit curr: Int): Boolean = {
-    unitMatchCurrTime(unitUnfoldToValues(unit, 0, 23), curr)
-  }
-
-  private def dayMatch(unit: String, daysOfMonth: Int)(implicit curr: Int): Boolean = {
-    unitMatchCurrTime(unitUnfoldToValues(unit, 1, daysOfMonth), curr)
-  }
-
-  private def monthMatch(unit: String)(implicit curr: Int): Boolean = {
-    unitMatchCurrTime(unitUnfoldToValues(unit, 1, 12), curr)
-  }
-
-  private def weekMatch(unit: String)(implicit curr: Int): Boolean = {
-    unitMatchCurrTime(unitUnfoldToValues(unit, 1, 7), curr)
   }
 
   private def intervalToValues(start: Int, interval: Int, maxLimit: Int): Option[List[Int]] = {
