@@ -11,7 +11,7 @@ object BooleanCron {
 
   private case class CronExpression(sec: Option[String], min: Option[String], hour: Option[String], day: Option[String], mon: Option[String], week: Option[String])
 
-  private val rangeRegex = """^(\d+)-(\d+)$""".r
+  private val rangeRegex = """^(\d{1,2})-(\d{1,2})$""".r
 
   private val intervalRegex = """^(\d+)/(\d+)$""".r
 
@@ -98,9 +98,12 @@ object BooleanCron {
 
   private def unitUnfoldToValues(unit: String, minLimit: Int, maxLimit: Int): List[Option[List[Int]]] = {
     unit.split(",").map(_ match {
-      case intervalRegex(s, i) => intervalToValues(s.toInt, i.toInt, maxLimit)
-      case rangeRegex(l, r) => rangeToValues(l.toInt, r.toInt, minLimit, maxLimit)
-      case u: String => Some(List(u.toInt))
+      case intervalRegex(s, i) =>
+        intervalToValues(s.toInt, i.toInt, maxLimit)
+      case rangeRegex(l, r) if l.toInt <= maxLimit && r.toInt <= maxLimit && l.toInt >= minLimit && r.toInt >= minLimit =>
+        rangeToValues(l.toInt, r.toInt, minLimit, maxLimit)
+      case u: String if u.toInt <= maxLimit && u.toInt >= minLimit =>
+        Some(List(u.toInt))
     }).toList
   }
 
@@ -142,7 +145,8 @@ object BooleanCron {
     else None
   }
 
-  object CronUnitEnume extends Enumeration {
+  private object CronUnitEnume extends Enumeration {
     val SEC, MIN, HOUR, DAY, MON, WEEK = Value
   }
+
 }
